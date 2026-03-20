@@ -115,15 +115,4 @@ No incluye:
 - observabilidad con OpenTelemetry + Prometheus
 - dashboard en Next.js
 
-## Capturas
 
-Pendiente:
-- dashboard overview
-- detail view con evidencias
-- Twin Trainer console
-- visual analysis panel
-
-## Licencia sugerida
-
-- **MIT** para maximizar portafolio y reutilización
-- **Apache-2.0** si quieres protección explícita de patentes y contribuciones más formales
