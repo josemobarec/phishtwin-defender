@@ -1,21 +1,27 @@
 from fastapi import FastAPI
-from sqlmodel import SQLModel
+from datetime import datetime, timezone
+import os
 
-from app.api.routes import detections, health
-from app.core.config import get_settings
-from app.core.logging import setup_logging
-from app.db.session import engine
-from app.models import entities  # noqa: F401
-
-setup_logging()
-settings = get_settings()
-app = FastAPI(title=settings.app_name, version="0.1.0")
+app = FastAPI(
+    title="PhishTwin Defender API",
+    version="0.1.0",
+    description="Backend base para análisis defensivo de phishing y BEC."
+)
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    SQLModel.metadata.create_all(engine)
+@app.get("/")
+def root():
+    return {
+        "message": "PhishTwin Defender API",
+        "status": "running"
+    }
 
 
-app.include_router(health.router, prefix=settings.api_v1_prefix, tags=["system"])
-app.include_router(detections.router, prefix=settings.api_v1_prefix, tags=["detections"])
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "service": "api",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": os.getenv("APP_ENV", "development")
+    }
