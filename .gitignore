@@ -1,0 +1,85 @@
+# ------------------------------
+# Python
+# ------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ------------------------------
+# Virtual environments
+# ------------------------------
+.venv/
+venv/
+env/
+
+# ------------------------------
+# Environment files
+# ------------------------------
+.env
+.env.local
+.env.*.local
+
+# Keep example env committed
+!.env.example
+
+# ------------------------------
+# Logs
+# ------------------------------
+*.log
+logs/
+*.out
+*.err
+
+# ------------------------------
+# OS / Editor files
+# ------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# ------------------------------
+# Docker / local runtime
+# ------------------------------
+docker-data/
+tmp/
+temp/
+
+# ------------------------------
+# Database / local artifacts
+# ------------------------------
+*.sqlite3
+*.db
+
+# ------------------------------
+# Node / frontend future-proofing
+# ------------------------------
+node_modules/
+.next/
+dist/
+build/
+
+# ------------------------------
+# Uploaded samples / generated artifacts
+# ------------------------------
+uploads/
+storage/
+artifacts/
+rendered/
+screenshots/
+
+# ------------------------------
+# Security-sensitive or secret files
+# ------------------------------
+secrets/
+*.pem
+*.key
+*.crt
