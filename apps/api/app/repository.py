@@ -185,3 +185,85 @@ def get_email_sample_by_id(sample_id: int) -> dict | None:
         "metadata": row[11] or {},
         "created_at": row[12].isoformat() if row[12] else None,
     }
+
+def insert_detection(payload: Dict[str, Any]) -> int:
+    query = """
+        INSERT INTO detections (
+            email_sample_id,
+            verdict,
+            risk_score,
+            confidence,
+            reasoning_summary,
+            detected_signals,
+            recommended_action,
+            model_versions,
+            evidence
+        )
+        VALUES (
+            %(email_sample_id)s,
+            %(verdict)s,
+            %(risk_score)s,
+            %(confidence)s,
+            %(reasoning_summary)s,
+            %(detected_signals)s::jsonb,
+            %(recommended_action)s,
+            %(model_versions)s::jsonb,
+            %(evidence)s::jsonb
+        )
+        RETURNING id;
+    """
+
+    db_payload = {
+        "email_sample_id": payload["email_sample_id"],
+        "verdict": payload["verdict"],
+        "risk_score": payload["risk_score"],
+        "confidence": payload.get("confidence"),
+        "reasoning_summary": payload.get("reasoning_summary"),
+        "detected_signals": json.dumps(payload.get("detected_signals", [])),
+        "recommended_action": payload.get("recommended_action"),
+        "model_versions": json.dumps(payload.get("model_versions", {})),
+        "evidence": json.dumps(payload.get("evidence", {})),
+    }
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, db_payload)
+            inserted_id = cur.fetchone()[0]
+        conn.commit()
+
+    return inserted_id
+
+def insert_analyst_feedback(payload: Dict[str, Any]) -> int:
+    query = """
+        INSERT INTO analyst_feedback (
+            detection_id,
+            analyst_email,
+            corrected_verdict,
+            notes,
+            useful
+        )
+        VALUES (
+            %(detection_id)s,
+            %(analyst_email)s,
+            %(corrected_verdict)s,
+            %(notes)s,
+            %(useful)s
+        )
+        RETURNING id;
+    """
+
+    db_payload = {
+        "detection_id": payload["detection_id"],
+        "analyst_email": payload["analyst_email"],
+        "corrected_verdict": payload.get("corrected_verdict"),
+        "notes": payload.get("notes"),
+        "useful": payload.get("useful"),
+    }
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, db_payload)
+            inserted_id = cur.fetchone()[0]
+        conn.commit()
+
+    return inserted_id

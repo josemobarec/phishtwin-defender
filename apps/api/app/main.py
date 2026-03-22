@@ -7,14 +7,19 @@ from app.db import check_db_connection
 from app.models import (
     AnalyzeEmailRequest,
     AnalyzeEmailResponse,
+    DetectionRecord,
     EmailSampleCreate,
     EmailSampleListResponse,
     EmailSampleRecord,
     EmailSampleResponse,
+    FeedbackRequest,
+    FeedbackResponse,
 )
 from app.repository import (
     get_email_sample_by_id,
+    insert_analyst_feedback,
     insert_audit_log,
+    insert_detection,
     insert_email_sample,
     list_email_samples,
 )
@@ -112,6 +117,30 @@ def analyze_email(payload: AnalyzeEmailRequest):
         }
     })
 
+    detection_payload = {
+        "email_sample_id": sample_id,
+        "verdict": "parsed",
+        "risk_score": 0.0,
+        "confidence": 0.0,
+        "reasoning_summary": "Initial parsing completed. Detection engine not yet applied.",
+        "detected_signals": [],
+        "recommended_action": "Pending risk evaluation.",
+        "model_versions": {
+            "parser": "v0.1.0",
+            "detector": "pending"
+        },
+        "evidence": {
+            "from_domain": parsed_email.from_domain,
+            "reply_to": parsed_email.reply_to,
+            "has_links": parsed_email.has_links,
+            "has_html": parsed_email.has_html,
+            "reply_to_mismatch": parsed_email.reply_to_mismatch,
+            "extracted_links": parsed_email.extracted_links,
+        }
+    }
+
+    detection_id = insert_detection(detection_payload)
+
     insert_audit_log(
         actor="system-dev",
         action="analyze_email",
@@ -122,12 +151,26 @@ def analyze_email(payload: AnalyzeEmailRequest):
             "source_type": parsed_email.raw_source_type,
             "has_links": parsed_email.has_links,
             "has_html": parsed_email.has_html,
+            "detection_id": detection_id,
         }
     )
 
     return {
         "sample_id": sample_id,
+        "detection_id": detection_id,
         "parsed_email": parsed_email,
+        "detection": {
+            "id": detection_id,
+            "email_sample_id": sample_id,
+            "verdict": detection_payload["verdict"],
+            "risk_score": detection_payload["risk_score"],
+            "confidence": detection_payload["confidence"],
+            "reasoning_summary": detection_payload["reasoning_summary"],
+            "detected_signals": detection_payload["detected_signals"],
+            "recommended_action": detection_payload["recommended_action"],
+            "model_versions": detection_payload["model_versions"],
+            "evidence": detection_payload["evidence"],
+        },
         "message": "Email analyzed and stored successfully"
     }
 
@@ -148,3 +191,24 @@ def get_email_sample(sample_id: int):
         raise HTTPException(status_code=404, detail="Email sample not found.")
 
     return item
+
+
+@app.post("/feedback", response_model=FeedbackResponse)
+def create_feedback(payload: FeedbackRequest):
+    feedback_id = insert_analyst_feedback(payload.model_dump())
+
+    insert_audit_log(
+        actor=payload.analyst_email,
+        action="create_feedback",
+        target_type="detection",
+        target_id=payload.detection_id,
+        details={
+            "corrected_verdict": payload.corrected_verdict,
+            "useful": payload.useful,
+        }
+    )
+
+    return {
+        "feedback_id": feedback_id,
+        "message": "Feedback stored successfully"
+    }

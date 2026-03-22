@@ -79,3 +79,35 @@ class EmailSampleRecord(BaseModel):
 class EmailSampleListResponse(BaseModel):
     items: List[EmailSampleRecord]
     total: int
+
+class DetectionRecord(BaseModel):
+    id: int
+    email_sample_id: int
+    verdict: str
+    risk_score: float
+    confidence: Optional[float] = None
+    reasoning_summary: Optional[str] = None
+    detected_signals: List[Dict[str, Any]] = Field(default_factory=list)
+    recommended_action: Optional[str] = None
+    model_versions: Dict[str, Any] = Field(default_factory=dict)
+    evidence: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AnalyzeEmailResponse(BaseModel):
+    sample_id: int
+    detection_id: int
+    parsed_email: ParsedEmail
+    detection: DetectionRecord
+    message: str = "Email analyzed and stored successfully"
+
+class FeedbackRequest(BaseModel):
+    detection_id: int
+    analyst_email: str
+    corrected_verdict: Optional[str] = None
+    notes: Optional[str] = None
+    useful: Optional[bool] = None
+
+
+class FeedbackResponse(BaseModel):
+    feedback_id: int
+    message: str = "Feedback stored successfully"
