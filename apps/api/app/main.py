@@ -23,7 +23,10 @@ from app.repository import (
     insert_email_sample,
     list_email_samples,
 )
+from app.services.detection_rules import evaluate_detection_rules
 from app.services.email_parser import parse_email_input
+from app.services.explainability import build_detection_explanation
+from app.services.scoring import calculate_risk_score
 
 app = FastAPI(
     title="PhishTwin Defender API",
@@ -94,8 +97,11 @@ def analyze_email(payload: AnalyzeEmailRequest):
             detail="Envía solo uno: 'eml_content' o 'email_json', no ambos."
         )
 
+    # 1. Parseo
     parsed_email = parse_email_input(payload.model_dump())
+    parsed_email_dict = parsed_email.model_dump()
 
+    # 2. Guardar sample parseado
     sample_id = insert_email_sample({
         "source_type": parsed_email.raw_source_type,
         "source_name": payload.source_name,
@@ -117,30 +123,41 @@ def analyze_email(payload: AnalyzeEmailRequest):
         }
     })
 
+    # 3. Reglas
+    signals = evaluate_detection_rules(parsed_email_dict)
+
+    # 4. Scoring
+    score_result = calculate_risk_score(signals)
+
+    # 5. Explicación
+    explanation = build_detection_explanation(
+        parsed_email=parsed_email_dict,
+        signals=signals,
+        score_result=score_result,
+    )
+
+    # 6. Preparar detection payload real
     detection_payload = {
         "email_sample_id": sample_id,
-        "verdict": "parsed",
-        "risk_score": 0.0,
-        "confidence": 0.0,
-        "reasoning_summary": "Initial parsing completed. Detection engine not yet applied.",
-        "detected_signals": [],
-        "recommended_action": "Pending risk evaluation.",
+        "verdict": score_result["verdict"],
+        "risk_score": score_result["risk_score"],
+        "confidence": score_result["confidence"],
+        "reasoning_summary": explanation["reasoning_summary"],
+        "detected_signals": [signal.model_dump() for signal in signals],
+        "recommended_action": explanation["recommended_action"],
         "model_versions": {
             "parser": "v0.1.0",
-            "detector": "pending"
+            "ruleset": "v0.1.0",
+            "scoring": "v0.1.0",
+            "explainability": "v0.1.0",
         },
-        "evidence": {
-            "from_domain": parsed_email.from_domain,
-            "reply_to": parsed_email.reply_to,
-            "has_links": parsed_email.has_links,
-            "has_html": parsed_email.has_html,
-            "reply_to_mismatch": parsed_email.reply_to_mismatch,
-            "extracted_links": parsed_email.extracted_links,
-        }
+        "evidence": explanation["evidence"],
     }
 
+    # 7. Persistir detección
     detection_id = insert_detection(detection_payload)
 
+    # 8. Auditoría
     insert_audit_log(
         actor="system-dev",
         action="analyze_email",
@@ -149,12 +166,14 @@ def analyze_email(payload: AnalyzeEmailRequest):
         details={
             "source_name": payload.source_name,
             "source_type": parsed_email.raw_source_type,
-            "has_links": parsed_email.has_links,
-            "has_html": parsed_email.has_html,
+            "verdict": score_result["verdict"],
+            "risk_score": score_result["risk_score"],
+            "signal_count": len(signals),
             "detection_id": detection_id,
         }
     )
 
+    # 9. Respuesta
     return {
         "sample_id": sample_id,
         "detection_id": detection_id,
