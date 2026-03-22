@@ -94,3 +94,31 @@ def extract_links_from_html(html: Optional[str]) -> List[str]:
         return []
 
     return normalize_links(links)
+
+def extract_url_domain(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+
+    try:
+        parsed = urlparse(url.strip())
+        if not parsed.netloc:
+            return None
+        return parsed.netloc.lower()
+    except Exception:
+        return None
+
+
+def get_base_domain(domain: Optional[str]) -> Optional[str]:
+    """
+    Heurística simple para MVP:
+    - intranet.internal-example.com -> internal-example.com
+    - updates-example.com -> updates-example.com
+    """
+    if not domain:
+        return None
+
+    parts = domain.lower().split(".")
+    if len(parts) < 2:
+        return domain.lower()
+
+    return ".".join(parts[-2:])

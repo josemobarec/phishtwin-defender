@@ -2,7 +2,7 @@ import re
 from typing import Any, Dict, List
 
 from app.models import DetectedSignal
-
+from app.services.normalizer import extract_url_domain, get_base_domain
 
 URGENT_TERMS = [
     "urgent",
@@ -79,6 +79,19 @@ def _domain_matches_suspicious_pattern(domain: str | None) -> List[str]:
     return matches
 
 
+def _extract_link_domains(links: List[str]) -> List[str]:
+    domains = []
+    seen = set()
+
+    for link in links:
+        domain = extract_url_domain(link)
+        if domain and domain not in seen:
+            seen.add(domain)
+            domains.append(domain)
+
+    return domains
+
+
 def evaluate_detection_rules(parsed_email: Dict[str, Any]) -> List[DetectedSignal]:
     signals: List[DetectedSignal] = []
 
@@ -87,6 +100,8 @@ def evaluate_detection_rules(parsed_email: Dict[str, Any]) -> List[DetectedSigna
     from_domain = parsed_email.get("from_domain")
     reply_to = parsed_email.get("reply_to")
     extracted_links = parsed_email.get("extracted_links", [])
+    link_domains = _extract_link_domains(extracted_links)
+    from_base_domain = get_base_domain(from_domain)
     has_html = parsed_email.get("has_html", False)
     reply_to_mismatch = parsed_email.get("reply_to_mismatch", False)
 
@@ -207,6 +222,56 @@ def evaluate_detection_rules(parsed_email: Dict[str, Any]) -> List[DetectedSigna
                 evidence={
                     "from_domain": from_domain,
                     "from_address": from_address,
+                },
+            )
+        )
+
+    suspicious_link_matches = []
+    for link_domain in link_domains:
+        matches = _domain_matches_suspicious_pattern(link_domain)
+        if matches:
+            suspicious_link_matches.append({
+                "link_domain": link_domain,
+                "matched_patterns": matches,
+            })
+
+    if suspicious_link_matches:
+        signals.append(
+            DetectedSignal(
+                signal_id="suspicious_link_domain",
+                category="technical",
+                severity="high",
+                weight=0.25,
+                description="Uno o más enlaces apuntan a dominios con patrones sospechosos.",
+                evidence={
+                    "matches": suspicious_link_matches,
+                },
+            )
+        )
+
+    mismatched_link_domains = []
+    for link_domain in link_domains:
+        link_base_domain = get_base_domain(link_domain)
+
+        if (
+            from_base_domain is not None
+            and link_base_domain is not None
+            and link_base_domain != from_base_domain
+        ):
+            mismatched_link_domains.append(link_domain)
+
+    if mismatched_link_domains:
+        signals.append(
+            DetectedSignal(
+                signal_id="sender_link_domain_mismatch",
+                category="identity",
+                severity="high",
+                weight=0.20,
+                description="El dominio del remitente no coincide con el dominio de destino de uno o más enlaces.",
+                evidence={
+                    "from_domain": from_domain,
+                    "from_base_domain": from_base_domain,
+                    "mismatched_link_domains": mismatched_link_domains,
                 },
             )
         )
