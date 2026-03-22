@@ -2,6 +2,8 @@ import re
 from typing import List, Optional
 from urllib.parse import urlparse
 
+from bs4 import BeautifulSoup
+
 
 URL_REGEX = re.compile(r"(https?://[^\s\"'<>]+)", re.IGNORECASE)
 
@@ -68,3 +70,27 @@ def extract_links_from_text(text: Optional[str]) -> List[str]:
 
     matches = URL_REGEX.findall(text)
     return normalize_links(matches)
+
+
+def extract_links_from_html(html: Optional[str]) -> List[str]:
+    if not html:
+        return []
+
+    links: List[str] = []
+
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+
+        for tag in soup.find_all("a", href=True):
+            href = tag.get("href")
+            if href:
+                links.append(href)
+
+        # opcionalmente, también busca URLs visibles dentro del HTML
+        visible_urls = URL_REGEX.findall(html)
+        links.extend(visible_urls)
+
+    except Exception:
+        return []
+
+    return normalize_links(links)
