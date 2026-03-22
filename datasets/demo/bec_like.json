@@ -1,0 +1,19 @@
+{
+  "source_name": "bec_like.json",
+  "metadata": {
+    "environment": "demo",
+    "category": "bec-like"
+  },
+  "email_json": {
+    "subject": "Urgent payment review",
+    "from_address": "Executive Office <ceo-office@company-example.com>",
+    "reply_to": "finance-review@external-mail.invalid",
+    "message_id": "<bec-001>",
+    "text_body": "I need you to review this payment request today. Keep this confidential until I confirm the next steps.",
+    "html_body": "<p>I need you to review this payment request today.</p><p>Please keep this confidential until I confirm the next steps.</p>",
+    "headers": {
+      "X-Mailer": "Business Mailer",
+      "X-Priority": "high"
+    }
+  }
+}

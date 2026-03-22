@@ -59,3 +59,23 @@ class AnalyzeEmailResponse(BaseModel):
     sample_id: int
     parsed_email: ParsedEmail
     message: str = "Email analyzed and stored successfully"
+
+class EmailSampleRecord(BaseModel):
+    id: int
+    source_type: str
+    source_name: Optional[str] = None
+    subject: Optional[str] = None
+    from_address: Optional[str] = None
+    from_domain: Optional[str] = None
+    reply_to: Optional[str] = None
+    message_id: Optional[str] = None
+    text_body: Optional[str] = None
+    html_body: Optional[str] = None
+    extracted_links: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    created_at: str
+
+
+class EmailSampleListResponse(BaseModel):
+    items: List[EmailSampleRecord]
+    total: int

@@ -8,9 +8,16 @@ from app.models import (
     AnalyzeEmailRequest,
     AnalyzeEmailResponse,
     EmailSampleCreate,
+    EmailSampleListResponse,
+    EmailSampleRecord,
     EmailSampleResponse,
 )
-from app.repository import insert_audit_log, insert_email_sample
+from app.repository import (
+    get_email_sample_by_id,
+    insert_audit_log,
+    insert_email_sample,
+    list_email_samples,
+)
 from app.services.email_parser import parse_email_input
 
 app = FastAPI(
@@ -123,3 +130,21 @@ def analyze_email(payload: AnalyzeEmailRequest):
         "parsed_email": parsed_email,
         "message": "Email analyzed and stored successfully"
     }
+
+@app.get("/email-samples", response_model=EmailSampleListResponse)
+def get_email_samples():
+    items = list_email_samples()
+    return {
+        "items": items,
+        "total": len(items)
+    }
+
+
+@app.get("/email-samples/{sample_id}", response_model=EmailSampleRecord)
+def get_email_sample(sample_id: int):
+    item = get_email_sample_by_id(sample_id)
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Email sample not found.")
+
+    return item

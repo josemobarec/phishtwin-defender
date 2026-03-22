@@ -1,0 +1,8 @@
+{
+  "source_name": "sample-eml-001.eml",
+  "metadata": {
+    "environment": "demo",
+    "category": "eml"
+  },
+  "eml_content": "From: Finance Team <finance@vendor-example.com>\nReply-To: payments@vendor-example.com\nSubject: Urgent invoice review\nMessage-ID: <demo-eml-001>\nMIME-Version: 1.0\nContent-Type: multipart/alternative; boundary=\"boundary123\"\n\n--boundary123\nContent-Type: text/plain; charset=\"utf-8\"\n\nPlease review this invoice:\nhttps://vendor-example.invalid/invoice/123\n\n--boundary123\nContent-Type: text/html; charset=\"utf-8\"\n\n<p>Please review this invoice:</p><p><a href=\"https://vendor-example.invalid/invoice/123\">Open invoice</a></p>\n\n--boundary123--"
+}

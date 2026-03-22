@@ -1,0 +1,19 @@
+{
+  "source_name": "benign_internal.json",
+  "metadata": {
+    "environment": "demo",
+    "category": "benign"
+  },
+  "email_json": {
+    "subject": "Team sync moved to 3 PM",
+    "from_address": "Operations Team <ops@internal-example.com>",
+    "reply_to": "ops@internal-example.com",
+    "message_id": "<benign-001>",
+    "text_body": "Hi team, the sync has been moved to 3 PM. Agenda is available at https://intranet.internal-example.com/calendar.",
+    "html_body": "<p>Hi team, the sync has been moved to 3 PM.</p><p>Agenda: <a href=\"https://intranet.internal-example.com/calendar\">calendar</a></p>",
+    "headers": {
+      "X-Mailer": "Internal Scheduler",
+      "X-Environment": "demo"
+    }
+  }
+}

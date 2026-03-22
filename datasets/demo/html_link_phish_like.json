@@ -1,0 +1,18 @@
+{
+  "source_name": "html_link_phish_like.json",
+  "metadata": {
+    "environment": "demo",
+    "category": "html-link-phish-like"
+  },
+  "email_json": {
+    "subject": "Document available for review",
+    "from_address": "Document Portal <portal@updates-example.com>",
+    "reply_to": "portal@updates-example.com",
+    "message_id": "<html-phish-001>",
+    "text_body": "Please review the pending document.",
+    "html_body": "<p>Please review the pending document.</p><p><a href=\"https://secure-login.invalid/review\">Open document</a></p>",
+    "headers": {
+      "X-Mailer": "Portal Notification Service"
+    }
+  }
+}

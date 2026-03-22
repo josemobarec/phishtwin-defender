@@ -94,3 +94,94 @@ def insert_audit_log(
         with conn.cursor() as cur:
             cur.execute(query, db_payload)
         conn.commit()
+
+
+def list_email_samples() -> list[dict]:
+    query = """
+        SELECT
+            id,
+            source_type,
+            source_name,
+            subject,
+            from_address,
+            from_domain,
+            reply_to,
+            message_id,
+            text_body,
+            html_body,
+            extracted_links,
+            metadata,
+            created_at
+        FROM email_samples
+        ORDER BY id DESC;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+
+    items = []
+    for row in rows:
+        items.append({
+            "id": row[0],
+            "source_type": row[1],
+            "source_name": row[2],
+            "subject": row[3],
+            "from_address": row[4],
+            "from_domain": row[5],
+            "reply_to": row[6],
+            "message_id": row[7],
+            "text_body": row[8],
+            "html_body": row[9],
+            "extracted_links": row[10] or [],
+            "metadata": row[11] or {},
+            "created_at": row[12].isoformat() if row[12] else None,
+        })
+
+    return items
+
+
+def get_email_sample_by_id(sample_id: int) -> dict | None:
+    query = """
+        SELECT
+            id,
+            source_type,
+            source_name,
+            subject,
+            from_address,
+            from_domain,
+            reply_to,
+            message_id,
+            text_body,
+            html_body,
+            extracted_links,
+            metadata,
+            created_at
+        FROM email_samples
+        WHERE id = %(sample_id)s;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, {"sample_id": sample_id})
+            row = cur.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "source_type": row[1],
+        "source_name": row[2],
+        "subject": row[3],
+        "from_address": row[4],
+        "from_domain": row[5],
+        "reply_to": row[6],
+        "message_id": row[7],
+        "text_body": row[8],
+        "html_body": row[9],
+        "extracted_links": row[10] or [],
+        "metadata": row[11] or {},
+        "created_at": row[12].isoformat() if row[12] else None,
+    }
