@@ -267,3 +267,75 @@ def insert_analyst_feedback(payload: Dict[str, Any]) -> int:
         conn.commit()
 
     return inserted_id
+
+def list_detections() -> list[dict]:
+    query = """
+        SELECT
+            id,
+            email_sample_id,
+            verdict,
+            risk_score,
+            confidence,
+            reasoning_summary,
+            created_at
+        FROM detections
+        ORDER BY id DESC;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+
+    items = []
+    for row in rows:
+        items.append({
+            "id": row[0],
+            "email_sample_id": row[1],
+            "verdict": row[2],
+            "risk_score": float(row[3]),
+            "confidence": float(row[4]) if row[4] is not None else None,
+            "reasoning_summary": row[5],
+            "created_at": row[6].isoformat() if row[6] else None,
+        })
+
+    return items
+
+
+def get_detection_by_id(detection_id: int) -> dict | None:
+    query = """
+        SELECT
+            id,
+            email_sample_id,
+            verdict,
+            risk_score,
+            confidence,
+            reasoning_summary,
+            detected_signals,
+            recommended_action,
+            model_versions,
+            evidence
+        FROM detections
+        WHERE id = %(detection_id)s;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, {"detection_id": detection_id})
+            row = cur.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "email_sample_id": row[1],
+        "verdict": row[2],
+        "risk_score": float(row[3]),
+        "confidence": float(row[4]) if row[4] is not None else None,
+        "reasoning_summary": row[5],
+        "detected_signals": row[6] or [],
+        "recommended_action": row[7],
+        "model_versions": row[8] or {},
+        "evidence": row[9] or {},
+    }

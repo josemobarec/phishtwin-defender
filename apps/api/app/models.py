@@ -130,3 +130,17 @@ class DetectionComputation(BaseModel):
     recommended_action: str
     evidence: Dict[str, Any] = Field(default_factory=dict)
     model_versions: Dict[str, Any] = Field(default_factory=dict)
+
+class DetectionListItem(BaseModel):
+    id: int
+    email_sample_id: int
+    verdict: str
+    risk_score: float
+    confidence: Optional[float] = None
+    reasoning_summary: Optional[str] = None
+    created_at: str
+
+
+class DetectionListResponse(BaseModel):
+    items: List[DetectionListItem]
+    total: int

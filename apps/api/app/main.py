@@ -14,6 +14,8 @@ from app.models import (
     EmailSampleResponse,
     FeedbackRequest,
     FeedbackResponse,
+    DetectionListItem,
+    DetectionListResponse,
 )
 from app.repository import (
     get_email_sample_by_id,
@@ -22,6 +24,8 @@ from app.repository import (
     insert_detection,
     insert_email_sample,
     list_email_samples,
+    get_detection_by_id,
+    list_detections,
 )
 from app.services.detection_rules import evaluate_detection_rules
 from app.services.email_parser import parse_email_input
@@ -231,3 +235,21 @@ def create_feedback(payload: FeedbackRequest):
         "feedback_id": feedback_id,
         "message": "Feedback stored successfully"
     }
+
+@app.get("/detections", response_model=DetectionListResponse)
+def get_detections():
+    items = list_detections()
+    return {
+        "items": items,
+        "total": len(items)
+    }
+
+
+@app.get("/detections/{detection_id}", response_model=DetectionRecord)
+def get_detection(detection_id: int):
+    item = get_detection_by_id(detection_id)
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Detection not found.")
+
+    return item
