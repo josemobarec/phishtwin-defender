@@ -80,6 +80,14 @@ class EmailSampleListResponse(BaseModel):
     items: List[EmailSampleRecord]
     total: int
 
+class DetectedSignal(BaseModel):
+    signal_id: str
+    category: str
+    severity: str
+    weight: float
+    description: str
+    evidence: Dict[str, Any] = Field(default_factory=dict)
+
 class DetectionRecord(BaseModel):
     id: int
     email_sample_id: int
@@ -87,7 +95,7 @@ class DetectionRecord(BaseModel):
     risk_score: float
     confidence: Optional[float] = None
     reasoning_summary: Optional[str] = None
-    detected_signals: List[Dict[str, Any]] = Field(default_factory=list)
+    detected_signals: List[DetectedSignal] = Field(default_factory=list)
     recommended_action: Optional[str] = None
     model_versions: Dict[str, Any] = Field(default_factory=dict)
     evidence: Dict[str, Any] = Field(default_factory=dict)
@@ -111,3 +119,14 @@ class FeedbackRequest(BaseModel):
 class FeedbackResponse(BaseModel):
     feedback_id: int
     message: str = "Feedback stored successfully"
+
+
+class DetectionComputation(BaseModel):
+    risk_score: float
+    confidence: float
+    verdict: str
+    detected_signals: List[DetectedSignal] = Field(default_factory=list)
+    reasoning_summary: str
+    recommended_action: str
+    evidence: Dict[str, Any] = Field(default_factory=dict)
+    model_versions: Dict[str, Any] = Field(default_factory=dict)
