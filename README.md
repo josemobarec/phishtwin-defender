@@ -17,7 +17,7 @@ PhishTwin Defender responde a ese problema con un pipeline híbrido de análisis
 - scoring de riesgo
 - explicabilidad para analistas
 - módulo seguro de generación sintética (`Twin Trainer`)
-
+ 
 ## Arquitectura
 
 ```text
