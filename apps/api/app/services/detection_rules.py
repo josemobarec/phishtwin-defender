@@ -1,8 +1,11 @@
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+from bs4 import BeautifulSoup
 
 from app.models import DetectedSignal
 from app.services.normalizer import extract_url_domain, get_base_domain
+
 
 URGENT_TERMS = [
     "urgent",
@@ -13,6 +16,7 @@ URGENT_TERMS = [
     "confidential",
     "do not call",
     "priority",
+    "important",
     "importante",
     "urgente",
     "hoy",
@@ -50,6 +54,33 @@ SUSPICIOUS_DOMAIN_PATTERNS = [
     r"login-secure",
 ]
 
+DISPLAY_NAME_SPOOF_TERMS = [
+    "support",
+    "security",
+    "billing",
+    "finance",
+    "financial",
+    "payroll",
+    "executive",
+    "office",
+    "document",
+    "portal",
+    "admin",
+    "accounts",
+    "hr",
+    "it team",
+    "operations",
+    "soporte",
+    "seguridad",
+    "facturacion",
+    "finanzas",
+    "nomina",
+    "portal",
+    "documento",
+    "cuentas",
+    "recursos humanos",
+]
+
 
 def _combine_text(parsed_email: Dict[str, Any]) -> str:
     parts = [
@@ -68,7 +99,7 @@ def _match_any_term(text: str, terms: List[str]) -> List[str]:
     return found
 
 
-def _domain_matches_suspicious_pattern(domain: str | None) -> List[str]:
+def _domain_matches_suspicious_pattern(domain: Optional[str]) -> List[str]:
     if not domain:
         return []
 
@@ -92,10 +123,43 @@ def _extract_link_domains(links: List[str]) -> List[str]:
     return domains
 
 
+def _extract_display_name(from_address: Optional[str]) -> Optional[str]:
+    if not from_address:
+        return None
+
+    from_address = from_address.strip()
+
+    if "<" in from_address:
+        display_name = from_address.split("<", 1)[0].strip().strip('"')
+        return display_name or None
+
+    return None
+
+
+def _extract_html_action_elements(html: Optional[str]) -> Dict[str, int]:
+    counts = {
+        "anchors": 0,
+        "buttons": 0,
+        "forms": 0,
+    }
+
+    if not html:
+        return counts
+
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+        counts["anchors"] = len(soup.find_all("a", href=True))
+        counts["buttons"] = len(soup.find_all("button"))
+        counts["forms"] = len(soup.find_all("form"))
+    except Exception:
+        return counts
+
+    return counts
+
+
 def evaluate_detection_rules(parsed_email: Dict[str, Any]) -> List[DetectedSignal]:
     signals: List[DetectedSignal] = []
 
-    subject = parsed_email.get("subject")
     from_address = parsed_email.get("from_address")
     from_domain = parsed_email.get("from_domain")
     reply_to = parsed_email.get("reply_to")
@@ -103,9 +167,12 @@ def evaluate_detection_rules(parsed_email: Dict[str, Any]) -> List[DetectedSigna
     link_domains = _extract_link_domains(extracted_links)
     from_base_domain = get_base_domain(from_domain)
     has_html = parsed_email.get("has_html", False)
+    html_body = parsed_email.get("html_body")
     reply_to_mismatch = parsed_email.get("reply_to_mismatch", False)
 
     combined_text = _combine_text(parsed_email)
+    display_name = _extract_display_name(from_address)
+    html_action_counts = _extract_html_action_elements(html_body)
 
     if reply_to_mismatch:
         signals.append(
@@ -165,6 +232,22 @@ def evaluate_detection_rules(parsed_email: Dict[str, Any]) -> List[DetectedSigna
             )
         )
 
+    if (
+        html_action_counts["anchors"] > 0
+        or html_action_counts["buttons"] > 0
+        or html_action_counts["forms"] > 0
+    ):
+        signals.append(
+            DetectedSignal(
+                signal_id="html_action_elements",
+                category="technical",
+                severity="medium",
+                weight=0.05,
+                description="El HTML contiene elementos accionables como enlaces, botones o formularios.",
+                evidence=html_action_counts,
+            )
+        )
+
     urgent_matches = _match_any_term(combined_text, URGENT_TERMS)
     if urgent_matches:
         signals.append(
@@ -195,18 +278,18 @@ def evaluate_detection_rules(parsed_email: Dict[str, Any]) -> List[DetectedSigna
             )
         )
 
-    suspicious_domain_matches = _domain_matches_suspicious_pattern(from_domain)
-    if suspicious_domain_matches:
+    suspicious_sender_matches = _domain_matches_suspicious_pattern(from_domain)
+    if suspicious_sender_matches:
         signals.append(
             DetectedSignal(
-                signal_id="suspicious_domain_pattern",
+                signal_id="suspicious_sender_domain",
                 category="identity",
                 severity="high",
                 weight=0.20,
                 description="El dominio del remitente coincide con patrones sospechosos.",
                 evidence={
                     "from_domain": from_domain,
-                    "matched_patterns": suspicious_domain_matches,
+                    "matched_patterns": suspicious_sender_matches,
                 },
             )
         )
@@ -222,6 +305,28 @@ def evaluate_detection_rules(parsed_email: Dict[str, Any]) -> List[DetectedSigna
                 evidence={
                     "from_domain": from_domain,
                     "from_address": from_address,
+                },
+            )
+        )
+
+    display_name_matches = (
+        display_name is not None
+        and any(term in display_name.lower() for term in DISPLAY_NAME_SPOOF_TERMS)
+    )
+
+    if display_name_matches and (
+        from_domain in FREE_MAIL_DOMAINS or bool(suspicious_sender_matches)
+    ):
+        signals.append(
+            DetectedSignal(
+                signal_id="display_name_external_mismatch",
+                category="identity",
+                severity="high",
+                weight=0.15,
+                description="El display name sugiere una identidad organizacional o de marca, pero el dominio del remitente es externo o sospechoso.",
+                evidence={
+                    "display_name": display_name,
+                    "from_domain": from_domain,
                 },
             )
         )
