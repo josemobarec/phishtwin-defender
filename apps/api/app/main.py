@@ -101,11 +101,9 @@ def analyze_email(payload: AnalyzeEmailRequest):
             detail="Envía solo uno: 'eml_content' o 'email_json', no ambos."
         )
 
-    # 1. Parseo
     parsed_email = parse_email_input(payload.model_dump())
     parsed_email_dict = parsed_email.model_dump()
 
-    # 2. Guardar sample parseado
     sample_id = insert_email_sample({
         "source_type": parsed_email.raw_source_type,
         "source_name": payload.source_name,
@@ -127,20 +125,16 @@ def analyze_email(payload: AnalyzeEmailRequest):
         }
     })
 
-    # 3. Reglas
     signals = evaluate_detection_rules(parsed_email_dict)
 
-    # 4. Scoring
     score_result = calculate_risk_score(signals)
 
-    # 5. Explicación
     explanation = build_detection_explanation(
         parsed_email=parsed_email_dict,
         signals=signals,
         score_result=score_result,
     )
 
-    # 6. Preparar detection payload real
     detection_payload = {
         "email_sample_id": sample_id,
         "verdict": score_result["verdict"],
@@ -151,17 +145,16 @@ def analyze_email(payload: AnalyzeEmailRequest):
         "recommended_action": explanation["recommended_action"],
         "model_versions": {
             "parser": "v0.1.0",
-            "ruleset": "v0.1.0",
-            "scoring": "v0.1.0",
-            "explainability": "v0.1.0",
+            "ruleset": "v0.2.0",
+            "scoring": "v0.2.0",
+            "explainability": "v0.2.0"
         },
         "evidence": explanation["evidence"],
     }
 
-    # 7. Persistir detección
     detection_id = insert_detection(detection_payload)
 
-    # 8. Auditoría
+
     insert_audit_log(
         actor="system-dev",
         action="analyze_email",
@@ -177,23 +170,24 @@ def analyze_email(payload: AnalyzeEmailRequest):
         }
     )
 
-    # 9. Respuesta
+    detection_record = {
+        "id": detection_id,
+        "email_sample_id": sample_id,
+        "verdict": detection_payload["verdict"],
+        "risk_score": detection_payload["risk_score"],
+        "confidence": detection_payload["confidence"],
+        "reasoning_summary": detection_payload["reasoning_summary"],
+        "detected_signals": detection_payload["detected_signals"],
+        "recommended_action": detection_payload["recommended_action"],
+        "model_versions": detection_payload["model_versions"],
+        "evidence": detection_payload["evidence"],
+    }
+
     return {
         "sample_id": sample_id,
         "detection_id": detection_id,
         "parsed_email": parsed_email,
-        "detection": {
-            "id": detection_id,
-            "email_sample_id": sample_id,
-            "verdict": detection_payload["verdict"],
-            "risk_score": detection_payload["risk_score"],
-            "confidence": detection_payload["confidence"],
-            "reasoning_summary": detection_payload["reasoning_summary"],
-            "detected_signals": detection_payload["detected_signals"],
-            "recommended_action": detection_payload["recommended_action"],
-            "model_versions": detection_payload["model_versions"],
-            "evidence": detection_payload["evidence"],
-        },
+        "detection": detection_record,
         "message": "Email analyzed and stored successfully"
     }
 
